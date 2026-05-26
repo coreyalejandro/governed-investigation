@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TLC Governance Demo — Governed Investigation</title>
+<style>
+  :root {
+    --bg:             #0d0d0d;
+    --surface:        #141414;
+    --surface2:       #1c1c1c;
+    --surface3:       #222;
+    --border:         #2a2a2a;
+    --text:           #e8e8e8;
+    --muted:          #777;
+    --muted2:         #555;
+    --accent:         #c8a96e;
+    --accent2:        #a07840;
+    --satisfied:      #3a7d44;
+    --satisfied-fg:   #7ecf8e;
+    --violated:       #8b2c2c;
+    --violated-fg:    #f08080;
+    --ambiguous-bg:   #1e1800;
+    --ambiguous-fg:   #f0c060;
+    --na-fg:          #666;
+    --halted-bg:      #1c0505;
+    --active-bg:      #041204;
+    --repair-bg:      #191900;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  /* ── ONBOARDING OVERLAY ─────────────────────────────────── */
+  #onboarding {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .ob-card {
+    background: var(--surface);
+    border: 1px solid var(--accent2);
+    border-radius: 4px;
+    max-width: 680px;
+    width: 100%;
+    padding: 32px 36px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .ob-card h1 {
+    color: var(--accent);
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .ob-card .ob-subtitle {
+    color: var(--muted);
+    font-size: 11px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+
+  .ob-section { margin-bottom: 22px; }
+
+  .ob-section h2 {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .ob-section p {
+    font-size: 12px;
+    color: #bbb;
+    line-height: 1.65;
+    margin-bottom: 8px;
+  }
+
+  .ob-steps { counter-reset: step; }
+
+  .ob-step {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+    align-items: flex-start;
+  }
+
+  .ob-step-num {
+    flex-shrink: 0;
+    width: 22px; height: 22px;
+    border: 1px solid var(--accent2);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .ob-step-text { font-size: 12px; color: #bbb; line-height: 1.55; }
+  .ob-step-text strong { color: var(--accent); }
+
+  .ob-wonders {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .ob-wonder {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 7px 10px;
+    font-size: 11px;
+  }
+
+  .ob-wonder .wname {
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+
+  .ob-wonder .wdesc { color: var(--muted); font-size: 10px; line-height: 1.4; }
+
+  .ob-states {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .ob-state {
+    border-radius: 3px;
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  .ob-state .sname { font-weight: 700; font-size: 11px; margin-bottom: 2px; }
+  .ob-state .sdesc { color: #999; line-height: 1.4; }
+
+  .ob-state.active   { background: var(--active-bg); border: 1px solid var(--satisfied); }
+  .ob-state.active .sname { color: var(--satisfied-fg); }
+  .ob-state.halted   { background: var(--halted-bg); border: 1px solid var(--violated); }
+  .ob-state.halted .sname { color: var(--violated-fg); }
+  .ob-state.ambiguous { background: var(--ambiguous-bg); border: 1px solid #7a6010; }
+  .ob-state.ambiguous .sname { color: var(--ambiguous-fg); }
+  .ob-state.repair   { background: var(--repair-bg); border: 1px solid #7a7000; }
+  .ob-state.repair .sname { color: #d4c06a; }
+  .ob-state.init     { background: var(--surface2); border: 1px solid var(--border); }
+  .ob-state.init .sname { color: var(--muted); }
+  .ob-state.resolved { background: #031020; border: 1px solid #2a6080; }
+  .ob-state.resolved .sname { color: #6ab0d0; }
+
+  .ob-launch-btn {
+    width: 100%;
+    margin-top: 24px;
+    padding: 12px;
+    background: var(--accent2);
+    border: none;
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    border-radius: 3px;
+    text-transform: uppercase;
+    transition: background 0.15s;
+  }
+
+  .ob-launch-btn:hover { background: var(--accent); color: #000; }
+
+  /* ── HELP DRAWER ─────────────────────────────────────────── */
+  #help-drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 360px;
+    background: var(--surface);
+    border-left: 1px solid var(--accent2);
+    z-index: 50;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    overflow-y: auto;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  #help-drawer.open { transform: translateX(0); }
+
+  .help-close {
+    position: absolute;
+    top: 12px; right: 16px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 18px;
+    cursor: pointer;
+    width: auto;
+    padding: 0;
+  }
+
+  .help-close:hover { color: var(--text); border: none; }
+
+  .help-section h3 {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .help-section p { font-size: 11px; color: #bbb; line-height: 1.6; margin-bottom: 6px; }
+
+  /* ── HEADER ────────────────────────────────────────────── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+
+  header h1 {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .header-divider { color: var(--border); }
+
+  .header-subtitle {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .header-actions { margin-left: auto; display: flex; gap: 8px; }
+
+  .header-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 2px;
+    width: auto;
+  }
+
+  .header-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── LAYOUT ─────────────────────────────────────────────── */
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr 300px;
+    height: calc(100vh - 48px);
+  }
+
+  /* ── LEFT PANEL ─────────────────────────────────────────── */
+  .left-panel {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-section {
+    border-bottom: 1px solid var(--border);
+    padding: 12px 14px;
+  }
+
+  .panel-label {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted2);
+    margin-bottom: 8px;
+  }
+
+  .panel-hint {
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  input[type="text"], select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 8px;
+    font-family: inherit;
+    font-size: 11px;
+    border-radius: 3px;
+    margin-bottom: 6px;
+  }
+
+  input[type="text"]:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  button {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    font-family: inherit;
+    font-size: 11px;
+    cursor: pointer;
+    border-radius: 3px;
+    width: 100%;
+    text-align: left;
+    transition: border-color 0.15s, color 0.15s;
+    line-height: 1.4;
+  }
+
+  button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--accent2);
+    border-color: var(--accent2);
+    color: #fff;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .btn-primary:hover { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  .scenario-list { overflow-y: auto; flex: 1; padding: 8px 14px; }
+
+  .scenario-card {
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .scenario-header {
+    padding: 8px 10px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .scenario-name {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 3px;
+  }
+
+  .scenario-what {
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+
+  .scenario-body { padding: 6px 10px 8px; }
+
+  .scenario-why {
+    font-size: 10px;
+    color: #999;
+    line-height: 1.45;
+    margin-bottom: 6px;
+  }
+
+  .scenario-why strong { color: var(--text); }
+
+  .run-btn {
+    font-size: 11px;
+    padding: 4px 8px;
+    text-align: center;
+  }
+
+  /* ── CENTER PANEL ───────────────────────────────────────── */
+  .center-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .fsm-bar {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-height: 44px;
+  }
+
+  .fsm-label { font-size: 10px; color: var(--muted2); letter-spacing: 0.1em; white-space: nowrap; }
+
+  .fsm-badge {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 3px 10px;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .fsm-badge.ACTIVE      { background: var(--active-bg); color: var(--satisfied-fg); border-color: var(--satisfied); }
+  .fsm-badge.HALTED      { background: var(--halted-bg); color: var(--violated-fg); border-color: var(--violated); }
+  .fsm-badge.AMBIGUOUS   { background: var(--ambiguous-bg); color: var(--ambiguous-fg); border-color: #7a6010; }
+  .fsm-badge.REPAIR      { background: var(--repair-bg); color: #d4c06a; border-color: #7a7000; }
+  .fsm-badge.INITIALIZING{ background: var(--surface2); color: var(--muted); }
+  .fsm-badge.RESOLVED    { background: #031020; color: #6ab0d0; border-color: #2a6080; }
+  .fsm-badge.TERMINATED  { background: #100015; color: #a060c0; border-color: #6030a0; }
+
+  .fsm-meaning {
+    font-size: 10px;
+    color: var(--muted);
+    font-style: italic;
+    flex: 1;
+  }
+
+  .halt-badge {
+    font-size: 9px;
+    padding: 2px 8px;
+    background: var(--halted-bg);
+    color: var(--violated-fg);
+    border: 1px solid var(--violated);
+    border-radius: 2px;
+    display: none;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+  }
+
+  .halt-badge.on { display: inline-block; }
+
+  .fsm-meta { font-size: 10px; color: var(--muted2); margin-left: auto; }
+
+  /* Invariant grid */
+  .inv-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px;
+  }
+
+  .inv-preamble {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 12px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--surface2);
+    line-height: 1.5;
+    display: none;
+  }
+
+  .inv-preamble.visible { display: block; }
+
+  .inv-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .inv-card {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: 3px;
+    padding: 10px 12px;
+    background: var(--surface);
+    cursor: default;
+  }
+
+  .inv-card.SATISFIED    { border-left-color: var(--satisfied-fg); }
+  .inv-card.VIOLATED     { border-left-color: var(--violated-fg); background: var(--halted-bg); }
+  .inv-card.AMBIGUOUS    { border-left-color: var(--ambiguous-fg); background: var(--ambiguous-bg); }
+  .inv-card.NOT_APPLICABLE { opacity: 0.4; }
+
+  .inv-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+
+  .inv-name { font-size: 11px; font-weight: 700; color: var(--accent); }
+
+  .inv-status {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    padding: 1px 6px;
+    border-radius: 2px;
+  }
+
+  .inv-status.SATISFIED    { color: var(--satisfied-fg); background: var(--satisfied); }
+  .inv-status.VIOLATED     { color: var(--violated-fg); background: var(--violated); }
+  .inv-status.AMBIGUOUS    { color: var(--ambiguous-fg); background: #3d3000; }
+  .inv-status.NOT_APPLICABLE { color: var(--na-fg); background: var(--surface3); }
+
+  .inv-question { font-size: 10px; color: #888; margin-bottom: 4px; font-style: italic; }
+  .inv-trigger  { font-size: 9px; color: var(--muted2); line-height: 1.4; }
+  .inv-trigger strong { color: var(--muted); }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.8;
+    grid-column: 1 / -1;
+  }
+
+  .empty-state .arrow { font-size: 20px; margin-bottom: 8px; }
+
+  /* ── RIGHT PANEL ────────────────────────────────────────── */
+  .right-panel {
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .rp-section-title {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted2);
+    padding: 8px 12px 6px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .event-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    min-height: 120px;
+  }
+
+  .event-item {
+    padding: 6px 12px;
+    border-bottom: 1px solid #161616;
+    font-size: 10px;
+    line-height: 1.5;
+  }
+
+  .event-item .ev-type {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    margin-right: 6px;
+  }
+
+  .ev-type.CLEARED  { color: var(--satisfied-fg); }
+  .ev-type.BLOCKED  { color: var(--ambiguous-fg); }
+  .ev-type.HALT     { color: var(--violated-fg); }
+  .ev-type.REPAIR   { color: #d4c06a; }
+  .ev-type.CLAIM    { color: #8888cc; }
+  .ev-type.SESSION  { color: var(--accent); }
+
+  .event-item .ev-msg { color: #aaa; }
+  .event-item .ev-detail { font-size: 9px; color: var(--muted2); margin-top: 2px; font-style: italic; }
+
+  .repair-zone {
+    border-top: 1px solid var(--border);
+    padding: 10px 12px;
+  }
+
+  .repair-hint {
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    line-height: 1.5;
+  }
+
+  .btn-repair {
+    background: var(--repair-bg);
+    border-color: #7a7000;
+    color: #d4c06a;
+    text-align: center;
+  }
+
+  .btn-repair:hover:not(:disabled) { background: #2a2500; border-color: var(--ambiguous-fg); color: var(--ambiguous-fg); }
+
+  .claim-zone {
+    border-top: 1px solid var(--border);
+    padding: 10px 12px;
+  }
+
+  .claim-hint {
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+
+  .ledger-zone {
+    border-top: 1px solid var(--border);
+    overflow-y: auto;
+    max-height: 140px;
+  }
+
+  .ledger-item {
+    font-size: 10px;
+    padding: 4px 12px;
+    border-bottom: 1px solid #161616;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  .tag-badge {
+    font-size: 9px;
+    font-weight: 700;
+    margin-right: 5px;
+  }
+
+  .tag-badge.VERIFIED    { color: var(--satisfied-fg); }
+  .tag-badge.CONSTRUCTED { color: var(--violated-fg); }
+  .tag-badge.PENDING     { color: var(--ambiguous-fg); }
+
+  /* scrollbars */
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     ONBOARDING OVERLAY — shown on first load
+═══════════════════════════════════════════════════════ -->
+<div id="onboarding">
+  <div class="ob-card">
+    <h1>Governed Investigation — TLC Runtime Demo</h1>
+    <p class="ob-subtitle">A live demonstration of the Living Constitution (TLC) framework from the paper <em>"Governed Investigation, Not Fluent Mirrors"</em>. Read this before you touch anything.</p>
+
+    <div class="ob-section">
+      <h2>What is this?</h2>
+      <p>Standard AI systems produce fluent, confident answers — then stop. They are <strong>fluent mirrors</strong>: they reflect your question back at you with statistical polish but no interpretive depth. When those systems are applied to Black consumer behavior, they routinely misclassify loyalty as inertia, betrayal responses as anomalies, and protective social strategies as suspicious behavior.</p>
+      <p>This demo shows a different approach: a <strong>governed investigator</strong> that cannot emit an output until it has checked eight structural conditions — the Eight Wonders of Black Shopping — against the incoming evidence. If any condition is uncertain or violated, the system halts and demands human clarification instead of guessing.</p>
+    </div>
+
+    <div class="ob-section">
+      <h2>The Eight Wonders — what is the system actually checking?</h2>
+      <div class="ob-wonders">
+        <div class="ob-wonder">
+          <div class="wname">I₁ Trust</div>
+          <div class="wdesc">Will this brand do right by me? Fails when a product is secretly reformulated without telling loyal customers.</div>
+        </div>
+        <div class="ob-wonder">
+          <div class="wname">I₂ Authenticity</div>
+          <div class="wdesc">Is this brand genuinely part of our world? Fails when brands dilute their identity or appropriate cultural symbols.</div>
+        </div>
+        <div class="ob-wonder">
+          <div class="wname">I₃ Status</div>
+          <div class="wdesc">What does this purchase say about me publicly? Fails when packaging is downgraded or the brand publicly disrespects its customers.</div>
+        </div>
+        <div class="ob-wonder">
+          <div class="wname">I₄ Identity Signaling</div>
+          <div class="wdesc">Does this product belong in my life and community? Fails when products mismatch cultural context.</div>
+        </div>
+        <div class="ob-wonder">
+          <div class="wname">I₅ Enacted Fidelity</div>
+          <div class="wdesc">I keep buying. Does that mean anything? Loyalty here is a covenant — not habit. It shatters on betrayal, not on a coupon.</div>
+        </div>
+        <div class="ob-wonder">
+          <div class="wname">I₆ Perceived Quality</div>
+          <div class="wdesc">Can this product handle my real life — not just a lab test? Fails when real-world use falls short of the brand promise.</div>
+        </div>
+        <div class="ob-wonder">
+          <div class="wname">I₇ Contextual Performance</div>
+          <div class="wdesc">Will it show up when it really matters — a cookout, a church event, a big occasion? Fails on scale and event failures.</div>
+        </div>
+        <div class="ob-wonder">
+          <div class="wname">I₈ Narrative</div>
+          <div class="wdesc">The upstream gate. What story does this community carry about this brand across generations? Every other Wonder depends on this one being intact. If Narrative is ambiguous, the whole system stops.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ob-section">
+      <h2>What do the colored states mean?</h2>
+      <div class="ob-states">
+        <div class="ob-state active">
+          <div class="sname">ACTIVE</div>
+          <div class="sdesc">All conditions checked and clear. Output is permitted.</div>
+        </div>
+        <div class="ob-state halted">
+          <div class="sname">HALTED</div>
+          <div class="sdesc">A condition was violated. Output is blocked. Human must repair before continuing.</div>
+        </div>
+        <div class="ob-state ambiguous">
+          <div class="sname">AMBIGUOUS</div>
+          <div class="sdesc">Not enough data to decide. The system refuses to guess — it asks for more context.</div>
+        </div>
+        <div class="ob-state repair">
+          <div class="sname">REPAIR</div>
+          <div class="sdesc">A human submitted a repair action. System is re-evaluating.</div>
+        </div>
+        <div class="ob-state init">
+          <div class="sname">INITIALIZING</div>
+          <div class="sdesc">Session just started. No telemetry received yet.</div>
+        </div>
+        <div class="ob-state resolved">
+          <div class="sname">RESOLVED</div>
+          <div class="sdesc">Session completed cleanly with all conditions satisfied and output emitted.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ob-section">
+      <h2>How to use this demo — start here</h2>
+      <div class="ob-steps">
+        <div class="ob-step">
+          <div class="ob-step-num">1</div>
+          <div class="ob-step-text">Click <strong>+ New Session</strong> on the left. This opens a Contract Window — a live runtime record the governed system maintains throughout a session.</div>
+        </div>
+        <div class="ob-step">
+          <div class="ob-step-num">2</div>
+          <div class="ob-step-text">Pick a scenario from the left panel. Each one is a real-world situation. Read the description before running it — it tells you what the AI will be fed and what should happen.</div>
+        </div>
+        <div class="ob-step">
+          <div class="ob-step-num">3</div>
+          <div class="ob-step-text">Watch the center panel. Each of the 8 Wonder cards will turn green (SATISFIED), red (VIOLATED), or amber (AMBIGUOUS). The FSM badge at the top tells you the overall system state.</div>
+        </div>
+        <div class="ob-step">
+          <div class="ob-step-num">4</div>
+          <div class="ob-step-text">If the system <strong>HALTS</strong>, click <strong>Submit Human Repair Action</strong> on the right. This simulates a human investigator stepping in to correct the system — which is the whole point.</div>
+        </div>
+        <div class="ob-step">
+          <div class="ob-step-num">5</div>
+          <div class="ob-step-text">The <strong>Truth Ledger</strong> on the right tracks every claim the system makes and tags it as VERIFIED, CONSTRUCTED (inferred), or PENDING. Try adding your own claims.</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="ob-launch-btn" onclick="dismissOnboarding()">I understand — Open the Demo</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     HELP DRAWER — accessible any time via header button
+═══════════════════════════════════════════════════════ -->
+<div id="help-drawer">
+  <button class="help-close" onclick="toggleHelp()">✕</button>
+
+  <div class="help-section">
+    <h3>What am I looking at?</h3>
+    <p>Three panels: <strong>Left</strong> — session control and scenario launcher. <strong>Center</strong> — the live Contract Window showing all 8 invariants and the FSM state. <strong>Right</strong> — event log, human repair action, and truth ledger.</p>
+  </div>
+
+  <div class="help-section">
+    <h3>What is a "session"?</h3>
+    <p>A session is one instance of the Contract Window — the runtime record the TLC system maintains while investigating a consumer behavior question. Create a new one for each experiment. You can run multiple scenarios in the same session to see how state accumulates.</p>
+  </div>
+
+  <div class="help-section">
+    <h3>Why does the system HALT?</h3>
+    <p>When any of the 8 Wonders is VIOLATED (a condition is actively broken) or AMBIGUOUS (not enough data to decide), the system refuses to emit output. A fluent mirror would just produce an answer. The governed investigator stops and demands human input. That is the safety guarantee.</p>
+  </div>
+
+  <div class="help-section">
+    <h3>What is the Truth Ledger?</h3>
+    <p>Every claim the system makes gets an epistemic tag: <strong style="color:var(--satisfied-fg)">VERIFIED</strong> means it traces to confirmed data. <strong style="color:var(--violated-fg)">CONSTRUCTED</strong> means the model inferred it — it might be wrong. <strong style="color:var(--ambiguous-fg)">PENDING</strong> means it is contested and needs review. If more than 3 CONSTRUCTED claims accumulate without a human sign-off, the system halts.</p>
+  </div>
+
+  <div class="help-section">
+    <h3>What is I₈ Narrative and why does it matter most?</h3>
+    <p>Narrative is the upstream gate. It asks: does this system know the multigenerational story this community carries about this brand or institution? Without that context, every other Wonder is uninterpretable. It is listed last by number but evaluated first by the engine — if Narrative is AMBIGUOUS, the session immediately enters AMBIGUOUS state and no further evaluation proceeds.</p>
+  </div>
+
+  <div class="help-section">
+    <h3>What is the "Frontin'" scenario?</h3>
+    <p>A Black shopper enters a heavily surveilled big-box store and deploys deliberate presentation management: precise grooming, visible premium brand markers, focused path movement. An ungoverned model reads the deliberateness and tension as suspicious. The governed investigator recognizes it as rational protective behavior under documented surveillance conditions and outputs NOMINAL.</p>
+  </div>
+
+  <div class="help-section">
+    <h3>Why does Euphemism Injection fail?</h3>
+    <p>The Bicameral Review includes a pattern detector for corporate sanitization language — phrases like "geographic footprint optimization" that mask store closures in Black neighborhoods. Even if all 8 Wonder invariants pass, the Bicameral Review catches the language and blocks output.</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════════════════ -->
+<header>
+  <h1>TLC Governance Demo</h1>
+  <span class="header-divider">|</span>
+  <span class="header-subtitle">Governed Investigation, Not Fluent Mirrors — Living Constitution Framework</span>
+  <div class="header-actions">
+    <button class="header-btn" onclick="showOnboarding()">? What is this</button>
+    <button class="header-btn" onclick="toggleHelp()">Reference Guide</button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════
+     THREE-PANEL LAYOUT
+═══════════════════════════════════════════════════════ -->
+<div class="layout">
+
+  <!-- ── LEFT: Session + Scenarios ── -->
+  <div class="left-panel">
+
+    <div class="panel-section">
+      <div class="panel-label">1. Start Here — Create a Session</div>
+      <p class="panel-hint">A session opens a Contract Window: the live runtime record the governance system maintains. Give it a task description, then run a scenario.</p>
+      <input id="task-input" type="text" placeholder="What are you investigating?" value="Auditing retail consumer behavior signals">
+      <button class="btn-primary" onclick="newSession()">+ New Session</button>
+    </div>
+
+    <div class="panel-section" style="padding-bottom:6px;">
+      <div class="panel-label">2. Pick a Scenario</div>
+      <p class="panel-hint">Each scenario feeds real-world telemetry into the engine. Read the description first — it tells you what should happen and why it matters.</p>
+    </div>
+
+    <div class="scenario-list" id="scenario-list">
+      <p style="color:var(--muted);font-size:11px;padding:8px 0">Loading scenarios...</p>
+    </div>
+
+  </div>
+
+  <!-- ── CENTER: FSM + Invariant Grid ── -->
+  <div class="center-panel">
+
+    <div class="fsm-bar">
+      <span class="fsm-label">SYSTEM STATE</span>
+      <span class="fsm-badge" id="fsm-badge">—</span>
+      <span class="halt-badge" id="halt-badge">HALT AUTHORITY ACTIVE</span>
+      <span class="fsm-meaning" id="fsm-meaning">Create a session to begin.</span>
+      <span class="fsm-meta" id="fsm-meta"></span>
+    </div>
+
+    <div class="inv-area">
+      <div class="inv-preamble" id="inv-preamble">
+        Each card below is one of the <strong>Eight Wonders of Black Shopping</strong> — the minimum structural conditions the system must verify before it is allowed to produce output. Green = verified clear. Red = actively violated. Amber = not enough data. Grey = does not apply to this scenario. If any card turns red, the entire system halts.
+      </div>
+      <div class="inv-grid" id="inv-grid">
+        <div class="empty-state">
+          <div class="arrow">↑</div>
+          Create a session using the left panel,<br>then run a scenario to see the Eight Wonders evaluated live.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── RIGHT: Log + Repair + Ledger ── -->
+  <div class="right-panel">
+
+    <div class="rp-section-title">3. Event Log — What happened and why</div>
+    <div class="event-log" id="event-log">
+      <div class="event-item"><span class="ev-msg" style="color:var(--muted)">Awaiting session...</span></div>
+    </div>
+
+    <div class="repair-zone">
+      <p class="repair-hint">If the system <strong style="color:var(--violated-fg)">HALTS</strong>, a human must intervene before it can proceed. This button simulates that — it represents a human investigator saying "I have reviewed this and I am taking responsibility for clearing the violation."</p>
+      <button class="btn-repair" id="repair-btn" onclick="submitRepair()" disabled>Submit Human Repair Action</button>
+    </div>
+
+    <div class="rp-section-title">Truth Ledger — Add a Claim</div>
+    <div class="claim-zone">
+      <p class="claim-hint">Every claim the system makes should be tagged. Add a claim and mark it: <strong style="color:var(--satisfied-fg)">VERIFIED</strong> (confirmed by data), <strong style="color:var(--violated-fg)">CONSTRUCTED</strong> (model inference — treat with skepticism), or <strong style="color:var(--ambiguous-fg)">PENDING</strong> (under review). If more than 3 CONSTRUCTED claims pile up without human sign-off, the system halts.</p>
+      <input id="claim-text" type="text" placeholder="Enter a claim...">
+      <select id="claim-tag">
+        <option value="VERIFIED">VERIFIED — confirmed by data</option>
+        <option value="CONSTRUCTED" selected>CONSTRUCTED — model inference</option>
+        <option value="PENDING">PENDING — contested / unverified</option>
+      </select>
+      <button onclick="addClaim()">Add to Truth Ledger</button>
+    </div>
+
+    <div class="rp-section-title">Truth Ledger</div>
+    <div class="ledger-zone" id="truth-ledger">
+      <div class="ledger-item" style="color:var(--muted2)">Empty — add claims above.</div>
+    </div>
+
+  </div>
+</div><!-- /.layout -->
+
+<script>
+let currentSession = null;
+
+const INV_META = {
+  I_1_Trust: {
+    label: "I\u2081 Trust",
+    question: "Will this brand do right by me?",
+    trigger: "Fails on: secret reformulation, quality decline, deceptive claims"
+  },
+  I_2_Authenticity: {
+    label: "I\u2082 Authenticity",
+    question: "Is this brand genuinely part of our world?",
+    trigger: "Fails on: brand dilution, cultural appropriation score > 0.7"
+  },
+  I_3_Status: {
+    label: "I\u2083 Status",
+    question: "What does this purchase say about me publicly?",
+    trigger: "Fails on: downmarket packaging, public disrespect event"
+  },
+  I_4_Identity_Signaling: {
+    label: "I\u2084 Identity Signaling",
+    question: "Does this product belong in my life and community?",
+    trigger: "Fails on: cultural mismatch, high contextual failure rate"
+  },
+  I_5_Enacted_Fidelity: {
+    label: "I\u2085 Enacted Fidelity",
+    question: "I keep buying — does that covenant mean anything?",
+    trigger: "Fails on: betrayal event + high switching-on-betrayal rate"
+  },
+  I_6_Perceived_Quality: {
+    label: "I\u2086 Perceived Quality",
+    question: "Can this product handle my real life?",
+    trigger: "Fails on: high return rate, negative real-use sentiment"
+  },
+  I_7_Contextual_Performance: {
+    label: "I\u2087 Contextual Performance",
+    question: "Will it show up when it really matters?",
+    trigger: "Fails on: event failure rate, bulk scale failure"
+  },
+  I_8_Narrative: {
+    label: "I\u2088 Narrative \u2014 Upstream Gate",
+    question: "What story does this community carry across generations?",
+    trigger: "Fails on: narrative overwrite, story ignored flag, or session > 40 turns without reanchoring. ALL other Wonders depend on this one."
+  }
+};
+
+const FSM_MEANINGS = {
+  INITIALIZING: "Session just started. No telemetry received yet.",
+  ACTIVE: "All conditions verified. The system is permitted to emit output.",
+  AMBIGUOUS: "Insufficient data on one or more conditions. The system will not guess \u2014 it needs more context.",
+  HALTED: "A condition was explicitly violated. Output is blocked until a human intervenes.",
+  REPAIR: "A human submitted a repair action. System is re-evaluating.",
+  RESOLVED: "Session completed cleanly. All claims tagged, output emitted.",
+  TERMINATED: "Session ended by user."
+};
+
+const SCENARIO_WHY = {
+  nominal:      "Shows the system working as intended: all eight Wonders satisfied, output cleared.",
+  betrayal:     "A brand secretly reformulates a beloved product. Trust and Enacted Fidelity collapse. The system halts instead of quietly producing a misleading \u201cbrand loyalty is declining\u201d report.",
+  euphemism:    "Tests the Bicameral Review\u2019s language layer. Even with clean invariants, sanitized corporate language (\u201cgeographic footprint optimization\u201d for store closures) is caught and blocked.",
+  memory_bloat: "After 40 turns without a reanchoring checkpoint, Narrative degrades to AMBIGUOUS. The system acknowledges it has lost context rather than continuing to produce confident output.",
+  frontin:      "A Black shopper\u2019s deliberate presentation management in a surveilled store. An ungoverned model flags it as suspicious. The governed system recognizes it as rational protective behavior and outputs NOMINAL."
+};
+
+async function api(method, path, body) {
+  const opts = { method, headers: { "Content-Type": "application/json" } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  return r.json();
+}
+
+async function loadScenarios() {
+  const data = await api("GET", "/scenarios");
+  const el = document.getElementById("scenario-list");
+  el.innerHTML = "";
+  for (const [key, val] of Object.entries(data)) {
+    const card = document.createElement("div");
+    card.className = "scenario-card";
+    card.innerHTML = `
+      <div class="scenario-header">
+        <div class="scenario-name">${val.label}</div>
+        <div class="scenario-what">${val.description}</div>
+      </div>
+      <div class="scenario-body">
+        <div class="scenario-why"><strong>Why it matters:</strong> ${SCENARIO_WHY[key] || ""}</div>
+        <button class="run-btn" onclick="runScenario('${key}')">Run this scenario \u2192</button>
+      </div>
+    `;
+    el.appendChild(card);
+  }
+}
+
+function dismissOnboarding() {
+  document.getElementById("onboarding").style.display = "none";
+}
+
+function showOnboarding() {
+  document.getElementById("onboarding").style.display = "flex";
+}
+
+function toggleHelp() {
+  document.getElementById("help-drawer").classList.toggle("open");
+}
+
+async function newSession() {
+  const taskState = document.getElementById("task-input").value.trim() || "Auditing consumer behavior signals";
+  const data = await api("POST", "/session/new", { task_state: taskState });
+  currentSession = data.session_id;
+  renderState(data);
+  document.getElementById("inv-preamble").classList.add("visible");
+}
+
+async function runScenario(key) {
+  if (!currentSession) {
+    alert("Create a session first using the '+ New Session' button on the left.");
+    return;
+  }
+  const data = await api("POST", "/session/run_scenario", { session_id: currentSession, scenario: key });
+  renderState(data);
+}
+
+async function submitRepair() {
+  if (!currentSession) return;
+  const data = await api("POST", "/session/repair", { session_id: currentSession });
+  renderState(data);
+}
+
+async function addClaim() {
+  if (!currentSession) { alert("Create a session first."); return; }
+  const text = document.getElementById("claim-text").value.trim();
+  const tag = document.getElementById("claim-tag").value;
+  if (!text) return;
+  const data = await api("POST", "/session/add_claim", { session_id: currentSession, claim_text: text, tag });
+  document.getElementById("claim-text").value = "";
+  renderState(data);
+}
+
+function renderState(data) {
+  const fsmState = data.fsm_state || "INITIALIZING";
+
+  // FSM badge
+  const badge = document.getElementById("fsm-badge");
+  badge.textContent = fsmState;
+  badge.className = "fsm-badge " + fsmState;
+
+  // Meaning
+  document.getElementById("fsm-meaning").textContent = FSM_MEANINGS[fsmState] || "";
+
+  // Halt badge
+  document.getElementById("halt-badge").classList.toggle("on", !!data.halt_authority_active);
+
+  // Meta
+  document.getElementById("fsm-meta").textContent = data.session_id
+    ? `session: ${data.session_id}  |  turn: ${data.turn_count}`
+    : "";
+
+  // Invariant grid
+  const grid = document.getElementById("inv-grid");
+  if (!data.invariant_registry) {
+    grid.innerHTML = '<div class="empty-state">No data.</div>';
+    return;
+  }
+
+  grid.innerHTML = "";
+  for (const [key, status] of Object.entries(data.invariant_registry)) {
+    const meta = INV_META[key] || { label: key, question: "", trigger: "" };
+    const card = document.createElement("div");
+    card.className = "inv-card " + status;
+    card.innerHTML = `
+      <div class="inv-top">
+        <div class="inv-name">${meta.label}</div>
+        <div class="inv-status ${status}">${status.replace("_", " ")}</div>
+      </div>
+      <div class="inv-question">${meta.question}</div>
+      <div class="inv-trigger"><strong>Trigger:</strong> ${meta.trigger}</div>
+    `;
+    grid.appendChild(card);
+  }
+
+  // Event log
+  const logEl = document.getElementById("event-log");
+  logEl.innerHTML = "";
+  (data.event_log || []).slice().reverse().forEach(e => {
+    const div = document.createElement("div");
+    div.className = "event-item";
+
+    let type = "SESSION", msg = e, detail = "";
+
+    if (e.includes("| HALT |"))      { type = "HALT";    const [head, ...rest] = e.split("| HALT |"); msg = head.trim(); detail = rest.join("").trim(); }
+    else if (e.includes("| CLEARED")) { type = "CLEARED"; msg = e.replace("| CLEARED |", "").replace("| CLEARED", "").trim(); detail = "Output emitted — all conditions satisfied."; }
+    else if (e.includes("| BLOCKED")) { type = "BLOCKED"; msg = e.replace("| BLOCKED", "").trim(); detail = "Output blocked — one or more conditions not met."; }
+    else if (e.includes("REPAIR"))    { type = "REPAIR";  msg = e; detail = "Human repair action submitted. System re-evaluating."; }
+    else if (e.includes("CLAIM"))     { type = "CLAIM"; }
+
+    div.innerHTML = `<span class="ev-type ${type}">[${type}]</span><span class="ev-msg">${msg}</span>${detail ? `<div class="ev-detail">${detail}</div>` : ""}`;
+    logEl.appendChild(div);
+  });
+
+  // Repair button
+  document.getElementById("repair-btn").disabled = !data.halt_authority_active;
+
+  // Truth ledger
+  const ledger = document.getElementById("truth-ledger");
+  if (!data.truth_ledger || data.truth_ledger.length === 0) {
+    ledger.innerHTML = '<div class="ledger-item" style="color:var(--muted2)">Empty — add claims above.</div>';
+  } else {
+    ledger.innerHTML = data.truth_ledger.map(c => `
+      <div class="ledger-item">
+        <span class="tag-badge ${c.epistemic_status}">[${c.epistemic_status}]</span>${c.text}
+      </div>`).join("");
+  }
+}
+
+loadScenarios();
+</script>
+</body>
+</html>
