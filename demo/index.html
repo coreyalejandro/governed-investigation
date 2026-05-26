@@ -55,9 +55,23 @@
     border-radius: 4px;
     max-width: 680px;
     width: 100%;
-    padding: 32px 36px;
     max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .ob-body {
+    padding: 32px 36px 16px;
     overflow-y: auto;
+    flex: 1;
+  }
+
+  .ob-footer {
+    padding: 16px 36px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
   }
 
   .ob-card h1 {
@@ -656,6 +670,7 @@
 ═══════════════════════════════════════════════════════ -->
 <div id="onboarding">
   <div class="ob-card">
+  <div class="ob-body">
     <h1>Governed Investigation — TLC Runtime Demo</h1>
     <p class="ob-subtitle">A live demonstration of the Living Constitution (TLC) framework from the paper <em>"Governed Investigation, Not Fluent Mirrors"</em>. Read this before you touch anything.</p>
 
@@ -759,8 +774,11 @@
       </div>
     </div>
 
-    <button class="ob-launch-btn" onclick="dismissOnboarding()">I understand — Open the Demo</button>
-  </div>
+    </div><!-- /.ob-body -->
+    <div class="ob-footer">
+      <button class="ob-launch-btn" onclick="dismissOnboarding()">I understand — Open the Demo</button>
+    </div>
+  </div><!-- /.ob-card -->
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
