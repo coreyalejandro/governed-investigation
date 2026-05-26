@@ -18,8 +18,11 @@ class BicameralReview:
             self.contract.halt_authority_active = True
             return False
 
-        if self._detect_sanitized_euphemisms(proposed_interpretation) and self.contract.invariant_registry["I_5_Enacted_Fidelity"] == InvariantStatus.SATISFIED:
+        if self._detect_sanitized_euphemisms(proposed_interpretation) and self.contract.invariant_registry["I_5_Enacted_Fidelity"] != InvariantStatus.VIOLATED:
             self.contract.invariant_registry["I_5_Enacted_Fidelity"] = InvariantStatus.VIOLATED
+            self.contract.halt_authority_active = True
+            from .engine import ContractWindowState
+            self.contract.fsm_state = ContractWindowState.HALTED
             return False
 
         try:
